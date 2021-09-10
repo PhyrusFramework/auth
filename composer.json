@@ -1,0 +1,19 @@
+{
+    "name": "phyrus/auth",
+    "version": "0.0.3",
+    "description": "Phyrus Auth module",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Phyrus",
+            "email": "framework@phyrus.org"
+        }
+    ],
+    "autoload": {
+        "files": ["/index.php"]
+    },
+    "require": {
+        "phyrus/framework": "^0.0.3"
+    }
+}
