@@ -2,13 +2,6 @@
 
 class Auth {
 
-    const ERROR_MISSING = 'token missing';
-    const ERROR_EXPIRED = 'token expired';
-    const ERROR_DB = 'token not in DB';
-    const ERROR_PAYLOAD = 'token wrong payload';
-    const ERROR_USER = 'user not found';
-    const ERROR_PASSWORD = 'incorrect password';
-
     /**
      * @var AuthUser $user
      */
@@ -24,16 +17,12 @@ class Auth {
     }
 
     /**
-     * Generate an error response.
+     * Set current logged User
      * 
-     * @param string message
-     * 
-     * @return Generic response
+     * @param ?AuthUser $user
      */
-    private static function error(string $msg) : Generic {
-        return new Generic([
-            'error' => $msg
-        ]);
+    public static function setUser(?AuthUser $user) {
+        self::$user = $user;
     }
 
     /**
@@ -45,75 +34,51 @@ class Auth {
      * 
      * @return Generic error or success response
      */
-    public static function login(string $username, string $password, ?array $cookies = null) : Generic {
+    public static function login(string $username, string $password) : Promise {
 
-        $useUsername = Config::get('auth.username');
-        if (!$useUsername) {
-            $method = 'email';
-        } else {
-            $method = Config::get('auth.loginWith', 'email|username');
-        }
+        return new Promise(function($resolve, $reject) use ($username, $password) {
 
-        $q = '';
-        if (Text::instance($method)->contains('email')) {
-            $q .= 'email = :username';
-        }
-        if (Text::instance($method)->contains('username')) {
-            if (!empty($q)) {
-                $q .= ' OR ';
+            $useUsername = Config::get('auth.username');
+            if (!$useUsername) {
+                $method = 'email';
+            } else {
+                $method = Config::get('auth.loginWith', 'email|username');
             }
 
-            $q .= 'username = :username';
-        }
-
-        $class = Config::get('auth.class');
-        $user = $class::findOne($q, [
-            'username' => $username
-        ]);
-
-        if ($user == null) return self::error(self::ERROR_USER);
-
-        if (!$user->checkPassword($password)) {
-            return self::error(self::ERROR_PASSWORD);
-        }
-
-        self::$user = $user;
-
-        // Login correct, now create tokens
-
-        if (Config::get('auth.tokens.storeDB')) {
-            $maxTokens = Config::get('auth.tokens.perUser');
-            if ($maxTokens > 0) {
-                $tokens = UserToken::find('active = 1 AND user_id = :ID ORDER BY createdAt ASC', ['ID' => $user->ID]);
-    
-                if (sizeof($tokens) >= $maxTokens) {
-                    $tokens[0]->delete();
+            $q = '';
+            if (Text::instance($method)->contains('email')) {
+                $q .= 'email = :username';
+            }
+            if (Text::instance($method)->contains('username')) {
+                if (!empty($q)) {
+                    $q .= ' OR ';
                 }
+
+                $q .= 'username = :username';
             }
-        }
 
-        $token = UserToken::generate($user->ID);
-        $refresh = UserToken::generate($user->ID, 'refresh');
+            $class = Config::get('auth.class');
+            $user = $class::findOne($q, [
+                'username' => $username
+            ]);
 
-        if (Config::get('auth.tokens.storeDB')) {
-            $token->save();
-            $refresh->save();
-        }
-
-        if (is_array($cookies)) {
-            if (isset($cookies['token'])) {
-                Cookie::set($cookies['token'], $token->value, Config::get('auth.tokens.duration') / 3600);
+            if ($user == null) {
+                $reject('user does not exist');
+                return;
             }
-            if (isset($cookies['refresh'])) {
-                Cookie::set($cookies['refresh'], $refresh->value, Config::get('auth.tokens.refreshDuration') / 3600);
-            }
-        }
 
-        return new Generic([
-            'success' => true,
-            'token' => $token->value,
-            'refresh' => $refresh->value
-        ]);
+            if (!$user->checkPassword($password)) {
+                $reject('invalid password');
+                return;
+            }
+
+            self::$user = $user;
+
+            // Login correct, now create tokens
+            $tokens = $user->authTokens();
+            $resolve($tokens);
+
+        });
 
     }
 
@@ -124,229 +89,116 @@ class Auth {
      * 
      * @return AuthUser|false
      */
-    public static function register(array $data) {
+    public static function register(array $data) : Promise {
 
-        if (!isset($data['email']) || !isset($data['password'])) {
-            return false;
-        }
+        return new Promise(function($resolve, $reject) use($data) {
 
-        $useUsername = Config::get('auth.username');
-
-        if ($useUsername && !isset($data['username'])) {
-            return false;
-        }
-
-        $class = Config::get('auth.class');
-
-        $user = $class::findOne('email = :email', [
-            'email' => $data['email']
-        ]);
-
-        if ($user != null) {
-            return false;
-        }
-
-        $user = new $class();
-        $user->email = $data['email'];
-        $user->setPassword($data['password']);
-        if ($useUsername) {
-            $user->username = $data['username'];
-        }
-
-        $user->save();
-
-        self::$user = $user;
-        return $user;
-
-    }
-
-    /**
-     * Validate token
-     * 
-     * @param string token
-     * @param string type 'session'|'refresh'
-     * 
-     * @return Generic error or success
-     */
-    private static function validateToken(string $token, string $type = 'session') : Generic {
-
-        if (Config::get('auth.tokens.storeDB')) {
-
-            $old = UserToken::find('createdAt < NOW() - INTERVAL '. Config::get('auth.tokens.durationRefresh') .' SECOND');
-            foreach($old as $oldTk) {
-                $oldTk->delete();
+            if (!isset($data['email']) || !isset($data['password'])) {
+                $reject('email or password missing');
+                return;
             }
-
-            $tk = UserToken::findOne('type = :type AND value = :value', [
-                'type' => $type,
-                'value' => $token
+    
+            $useUsername = Config::get('auth.username');
+    
+            if ($useUsername && !isset($data['username'])) {
+                $reject('username missing');
+                return;
+            }
+    
+            $class = Config::get('auth.class');
+    
+            $user = $class::findOne('email = :email', [
+                'email' => $data['email']
             ]);
     
-            if ($tk == null) {
-                return self::error(self::ERROR_DB);
+            if ($user != null) {
+                $reject('email already exists');
+                return;
             }
     
-            if (!$tk->active) {
-                return self::error(self::ERROR_EXPIRED);
+            $user = new $class();
+            $user->email = $data['email'];
+            $user->setPassword($data['password']);
+            if ($useUsername) {
+                $user->username = $data['username'];
             }
-        } else {
-            $tk = new UserToken();
-            $tk->value = $token;
-        }
+    
+            $user->save();
+            $resolve($user);
 
-        $key = Config::get('auth.tokens.key');
-        $jwt = new JWT($key);
-
-        if ($jwt->isExpired($token)) {
-
-            $tk->active = false;
-            if (Config::get('auth.tokens.storeDB')) {
-                $tk->save();
-            }
-
-            return self::error(self::ERROR_EXPIRED);
-        }
-
-        $content = $jwt->decode($token);
-
-        if (!isset($content->userId)) {
-            return self::error(self::ERROR_PAYLOAD);
-        }
-
-        $class = Config::get('auth.class');
-        $user = $class::findOne('ID = :ID', ['ID' => intval($content->userId) ]);
-
-        if ($user == null) {
-            return self::error(self::ERROR_USER);
-        }
-
-        self::$user = $user;
-
-        return new Generic([
-            'success' => true,
-            'token' => $tk,
-            'user' => $user
-        ]);
-    }
-
-    /**
-     * Validate token. If not passed, it is obtained from authorization header.
-     * 
-     * @param string token
-     * 
-     * @return Generic error or success
-     */
-    public static function validate(?string $token = null) : Generic {
-
-        $header = $token == null ? AUTHORIZATION() : $token;
-        if (empty($header)) {
-            return self::error(self::ERROR_MISSING);
-        }
-
-        return self::validateToken($header);
+        });
 
     }
 
     /**
-     * Validate token and try to refresh it if it's expired.
+     * Validate tokens to get logged user and refresh his tokens if necessary.
      * 
-     * @param string token
-     * @param string refreshToken
-     * @param array [Optional] cookies to store new tokens.
+     * @param ?string $sessionToken
+     * @param ?string $refreshToken
      * 
-     * @return Generic error or success
+     * @return Generic
      */
-    public static function validateAndRefresh(string $token, ?string $refresh = null, ?array $cookies = null) : Generic {
+    public static function validate(?string $sessionToken, ?string $refreshToken = null) {
 
-        $result = self::validate($token);
-        if (!$result->has('error')) {
-            return $result;
-        }
+        return new Promise(function($resolve, $reject) use ($sessionToken, $refreshToken) {
 
-        if ($result->error != self::ERROR_EXPIRED) {
-            return $result;
-        }
-
-        return self::refresh($refresh, $cookies);
-
-    }
-
-    /**
-     * Validate tokens directly from cookies.
-     * 
-     * @param array cookies names.
-     * 
-     * @return Generic error or success
-     */
-    public static function validateFromCookies(array $cookies) : Generic {
-
-        if (!isset($cookies['token'])) {
-            return self::error(self::ERROR_MISSING);
-        }
-
-        $token = Cookie::get($cookies['token']);
-        if (empty($token)) {
-            return self::error(self::ERROR_MISSING);
-        }
-
-        $refresh = null;
-        if (isset($cookies['refresh'])) {
-            $refresh = Cookie::get($cookies['refresh']);
-        }
-
-        return self::validateAndRefresh($token, $refresh, $cookies);
-
-    }
-
-    /**
-     * Generate a new token using the refresh token.
-     * 
-     * @param string refreshToken
-     * @param array [Optional] cookies to store the new tokens.
-     * 
-     * @return Generic error or success
-     */
-    public static function refresh(string $refreshToken, ?array $cookies = null) : Generic {
-
-        $result = self::validateToken($refreshToken, 'refresh');
-
-        if ($result->has('error')) {
-            return $result;
-        }
-
-        $user = $result->user;
-
-        // Disable this refresh token, so it gets replaced.
-        $result->token->active = false;
-        if (Config::get('auth.tokens.storeDB')) {
-            $result->token->save();
-        }
-
-        $token = UserToken::generate($user->ID);
-        $refresh = UserToken::generate($user->ID, 'refresh');
-
-        if (Config::get('auth.tokens.storeDB')) {
-            $token->save();
-            $refresh->save();
-        }
-
-        if (is_array($cookies)) {
-            if (isset($cookies['token'])) {
-                Cookie::set($cookies['token'], $token->value, Config::get('auth.tokens.duration') / 3600);
+            if (empty($sessionToken)) {
+                $reject('token empty');
+                return;
             }
-            if (isset($cookies['refresh'])) {
-                Cookie::set($cookies['refresh'], $token->value, Config::get('auth.tokens.refreshDuration') / 3600);
-            }
-        }
 
-        return new Generic([
-            'success' => true,
-            'token' => $token->value,
-            'refresh' => $refresh->value
-        ]);
+            $tk = UserToken::instance($sessionToken, 'sessionToken');
+
+            if ($tk == null) {
+                $reject('token not found');
+                return;
+            }
+
+            $tk->validate()
+            ->then(function() use ($tk, $refreshToken, $resolve) {
+                $user = $tk->getUser();
+                Auth::setUser($user);
+
+                $resolve($user->authTokens());
+            })
+            ->catch( function($err) use ($tk, $refreshToken, $resolve, $reject) {
+                
+                if (empty($refreshToken)) {
+                    $reject($err);
+                    return;
+                }
+
+                $rtk = UserToken::instance($refreshToken, 'refreshToken');
+
+                $rtk->validate()
+                ->then(function() use($rtk, $tk, $resolve, $reject) {
+                    $user = $rtk->getUser();
+
+                    if ($user == null) {
+                        $reject('user not found');
+                        return;
+                    }
+
+                    Auth::setUser($user);
+
+                    $user->refreshToken($rtk->value, $tk->value)
+                    ->then( function( $newTokens ) use ($resolve) {
+                        $resolve($newTokens);
+                    })
+                    ->catch(function($err) use ($reject) {
+                        $reject($err);
+                    });
+
+                })
+                ->catch(function($err) use ($reject) {
+                    $reject($err);
+                });
+
+            });
+
+
+        });
 
     }
-
-
 
 }

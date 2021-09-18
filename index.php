@@ -8,16 +8,16 @@ if (Config::get('development_mode')) {
 
     if (Config::get('auth') == null) {
         Config::save('auth', [
+            'class' => 'AuthUser',
             'username' => true,
             'loginWith' => 'email|username',
             'tokens' => [
+                'storeDB' => true,
                 'key' => 'Auth',
-                'duration' => 3600,
-                'durationRefresh' => 604800,
-                'perUser' => 3,
-                'storeDB' => true
-            ],
-            'class' => 'AuthUser'
+                'sessionDuration' => 3600,
+                'refreshDuration' => 604800,
+                'perUser' => 100
+            ]
         ]);
     }
 

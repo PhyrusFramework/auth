@@ -12,16 +12,17 @@ Ajax::add('Auth.Login', function($req) {
         response_die('bad');
     }
 
-    $result = Auth::login($req->username, $req->password);
-
-    if (!$result) {
+    Auth::login($username, $req->password)
+    ->then(function($tokens) {
+        response_die('ok', [
+            'token' => $result->sessionToken,
+            'refreshToken' => $result->refreshToken,
+            'user' => $result->user->ID
+        ]);
+    })
+    ->catch(function($err) {
         response_die('unauthorized');
-    }
-
-    response_die('ok', [
-        'token' => $result->token,
-        'refreshToken' => $result->refreshToken
-    ]);
+    });
 
 });
 
@@ -39,9 +40,13 @@ Ajax::add('Auth.Register', function($req) {
         $data['username'] = $req->username;
     }
 
-    $user = Auth::register($data);
-
-    response_die('ok', [
-        'user' => $user->ID
-    ]);
+    Auth::register($data)
+    ->then(function($user) {
+        response_die('ok', [
+            'user' => $user->ID
+        ]);
+    })
+    ->catch(function() {
+        response_die('bad');
+    });
 });
