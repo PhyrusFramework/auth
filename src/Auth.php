@@ -155,11 +155,15 @@ class Auth {
             }
 
             $tk->validate()
-            ->then(function() use ($tk, $refreshToken, $resolve) {
+            ->then(function() use ($tk, $sessionToken, $refreshToken, $resolve) {
                 $user = $tk->getUser();
                 Auth::setUser($user);
 
-                $resolve($user->authTokens());
+                $resolve(new Generic([
+                    'sessionToken' => $sessionToken,
+                    'refreshToken' => $refreshToken,
+                    'user' => $user
+                ]));
             })
             ->catch( function($err) use ($tk, $refreshToken, $resolve, $reject) {
                 

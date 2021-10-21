@@ -73,7 +73,7 @@ class UserToken extends ORM {
      * 
      * @return UserToken
      */
-    public static function instance(string $token, ?string $type) : UserToken {
+    public static function instance(string $token, $type = null) : UserToken {
         $tk = new UserToken();
         $tk->value = $token;
 
