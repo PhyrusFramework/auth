@@ -205,4 +205,42 @@ class Auth {
 
     }
 
+        /**
+     * Save tokens as cookies 'sessionToken' and 'refreshToken'.
+     * 
+     * @param string $token
+     * @param string [Optional] $refreshToken
+     */
+    public static function saveCookies(string $token, string $refreshToken = '') {
+
+        Cookie::set('sessionToken', $token, Config::get('auth.tokens.sessionDuration', 3600));
+        if (!empty($refreshToken)) {
+            Cookie::set('refreshToken', $refreshToken, Config::get('auth.tokens.refreshDuration'), 604800);
+        }
+
+    }
+
+    /**
+     * Get tokens from cookies.
+     * 
+     * @return Generic
+     */
+    public static function getCookies() {
+        $token = Cookie::get('sessionToken');
+        $refresh = Cookie::get('refreshToken');
+
+        return new Generic([
+            'sessionToken' => $token,
+            'refreshToken' => $refresh
+        ]);
+    }
+
+    /**
+     * Delete Auth token cookies.
+     */
+    public static function deleteCookies() {
+        Cookie::destroy('sessionToken');
+        Cookie::destroy('refreshToken');
+    }
+
 }
