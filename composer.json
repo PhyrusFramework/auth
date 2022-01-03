@@ -1,6 +1,6 @@
 {
     "name": "phyrus/auth",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "description": "Phyrus Auth module",
     "type": "library",
     "license": "MIT",
@@ -14,6 +14,6 @@
         "files": ["/index.php"]
     },
     "require": {
-        "phyrus/framework": "^0.0.7"
+        "phyrus/framework": "^0.0.8"
     }
 }

@@ -4,4 +4,4 @@ The Auth module implements the creation and management of users and authenticati
 
     composer require phyrus/auth
 
-Find the documentation in: https://phyrus.org/package/auth/
+Find the documentation in: https://phyrus.gitbook.io/phyrus-auth/

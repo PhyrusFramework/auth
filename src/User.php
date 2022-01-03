@@ -49,7 +49,6 @@ class AuthUser extends AdvancedORM {
     public function setPassword(string $password) : string {
         $pass = generate_password($password);
         $this->password = $pass;
-        $this->save();
         return $pass;
     }
 
