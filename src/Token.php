@@ -2,36 +2,20 @@
 
 class UserToken extends ORM {
 
-    public function Definition() {
+    public function Definition(DBBuilder $table) {
 
-        return [
-            'name' => 'user_tokens',
-            'columns' => [
-                [
-                    'name' => 'user_id',
-                    'type' => 'BIGINT',
-                    'notnull' => true,
-                    'default' => 0
-                ],
-                [
-                    'name' => 'type',
-                    'type' => 'VARCHAR(100)',
-                    'notnull' => true,
-                    'default' => 'token'
-                ],
-                [
-                    'name' => 'active',
-                    'type' => 'TINYINT',
-                    'notnull' => true,
-                    'default' => 1
-                ],
-                [
-                    'name' => 'value',
-                    'type' => 'TEXT',
-                    'notnull' => true
-                ]
-            ]
-        ];
+        $table->name('user_tokens')
+
+        ->column('user_id', 'BIGINT')
+            ->references('users(ID)')
+
+        ->column('type')
+            ->default('token')
+
+        ->column('active', 'TINYINT')
+            ->default(1)
+
+        ->column('value', 'TEXT');
 
     }
 

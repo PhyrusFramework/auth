@@ -26,6 +26,16 @@ class Auth {
     }
 
     /**
+     * Create database tables if don't exist.
+     */
+    public static function CreateTables() {
+        AuthUser::CreateTable();
+        if (Config::get('auth.tokens.storeDB')) {
+            UserToken::CreateTable();
+        }
+    }
+
+    /**
      * Sign in using user credentials.
      * 
      * @param string username Email or username
@@ -206,13 +216,13 @@ class Auth {
 
     }
 
-        /**
-     * Save tokens as cookies 'sessionToken' and 'refreshToken'.
+    /**
+     * Set tokens as cookies 'sessionToken' and 'refreshToken'.
      * 
      * @param string $token
      * @param string [Optional] $refreshToken
      */
-    public static function saveCookies(string $token, string $refreshToken = '') {
+    public static function setCookies(string $token, string $refreshToken = '') {
 
         Cookie::set('sessionToken', $token, Config::get('auth.tokens.sessionDuration', 3600));
         if (!empty($refreshToken)) {

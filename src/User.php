@@ -2,37 +2,23 @@
 
 class AuthUser extends AdvancedORM {
 
-    public function Definition() {
+    public function Definition(DBBuilder $table) {
 
-        $columns = [];
+        $table->name('users');
 
         $username = Config::get('auth.username');
         if ($username) {
-            $columns[] = [
-                'name' => 'username',
-                'type' => 'VARCHAR(200)',
-                'unique' => true,
-                'notnull' => true
-            ];
+            $table->column('username')
+                ->unique()
+                ->notnull();
         }
 
-        $columns[] = [
-            'name' => 'email',
-            'type' => 'VARCHAR(200)',
-            'unique' => true,
-            'notnull' => true
-        ];
-        
-        $columns[] = [
-            'name' => 'password',
-            'type' => 'TEXT'
-        ];
+        $table->column('email')
+            ->unique()
+            ->notnull();
 
-
-        return [
-            'name' => 'users',
-            'columns' => $columns
-        ];
+        $table->column('password', 'TEXT')
+            ->notSerializable();
     }
 
     public function reference_column() {
