@@ -9,13 +9,11 @@ class AuthUser extends AdvancedORM {
         $username = Config::get('auth.username');
         if ($username) {
             $table->column('username')
-                ->unique()
-                ->notnull();
+                ->unique();
         }
 
         $table->column('email')
-            ->unique()
-            ->notnull();
+            ->unique();
 
         $table->column('password', 'TEXT')
             ->notSerializable();
