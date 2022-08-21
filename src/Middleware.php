@@ -13,9 +13,7 @@ Router::addMiddleware('authenticated', function($req, $params) {
         response_die('unauthorized');
     }
 
-    return Auth::validate($tk)->resolve(
-        function($success) { return true; },
-        function($err) { return false; }
-    );
+    return Auth::validate($tk)
+    ->isSuccess() ? true : false;
 
 });

@@ -95,9 +95,9 @@ class Auth {
     /**
      * Register a new user
      * 
-     * @param string ['email', 'password', ?'username']
+     * @param array ['email', 'password', ?'username']
      * 
-     * @return AuthUser|false
+     * @return Promise
      */
     public static function register(array $data) : Promise {
 
@@ -117,8 +117,10 @@ class Auth {
     
             $class = Config::get('auth.class');
     
+            $email = trim($data['email']);
+
             $user = $class::findOne('email = :email', [
-                'email' => $data['email']
+                'email' => $email
             ]);
     
             if ($user != null) {
@@ -127,7 +129,7 @@ class Auth {
             }
     
             $user = new $class();
-            $user->email = $data['email'];
+            $user->email = $email;
             $user->setPassword($data['password']);
             if ($useUsername) {
                 $user->username = $data['username'];

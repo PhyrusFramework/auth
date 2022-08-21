@@ -22,6 +22,7 @@ if (Config::get('project.development_mode')) {
                 'signup' => '/api/auth/signup',
                 'validate' => '/api/auth/validate',
                 'refresh' => '/api/auth/refresh',
+                'logout' => '/api/auth/logout',
                 'user' => '/api/auth/user',
                 'userData' => []
             ]
