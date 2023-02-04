@@ -6,14 +6,24 @@ Router::addMiddleware('authenticated', function($req, $params) {
 
     if (!$tk) {
         $cookies = Auth::getCookies();
-        $tk = $cookies->sessionToken;
+        $tk = $cookies->token;
     }
 
     if (empty($tk) || $tk == 'null') {
-        response_die('unauthorized');
+        response_die('unauthorized', [
+            'code' => 'token.missing'
+        ]);
     }
 
-    return Auth::validate($tk)
-    ->isSuccess() ? true : false;
+    $valid = Auth::validate($tk);
+
+    if ($valid->isSuccess()) {
+        return true;
+    }
+
+    return response_die('unauthorized', [
+        'code' => 'token.invalid'
+    ]);
+
 
 });

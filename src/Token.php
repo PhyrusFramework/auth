@@ -7,7 +7,7 @@ class UserToken extends ORM {
         $table->name('user_tokens')
 
         ->column('user_id', 'BIGINT')
-            ->references('users(ID)')
+            ->references('users')
 
         ->column('type')
             ->default('token')
@@ -28,6 +28,14 @@ class UserToken extends ORM {
      */
     private static function jwt($age = 3600) : JWT {
         return new JWT(Config::get('auth.tokens.key'), $age);
+    }
+
+    private static function encrypt($data) {
+        return OpenSSL::encrypt($data, Config::get('auth.tokens.key'));
+    }
+
+    private static function decrypt($token) {
+        return OpenSSL::decrypt($token, Config::get('auth.tokens.key'));
     }
 
     /**
@@ -72,7 +80,7 @@ class UserToken extends ORM {
             $tk = $found;
         }
 
-        $payload = self::jwt()->decode($token);
+        $payload = self::jwt()->decode( self::decrypt( $token ) );
 
         if (!$payload) {
             return $tk;
@@ -111,10 +119,9 @@ class UserToken extends ORM {
         $token->user_id = $user->ID;
         $token->type = $params['type'];
 
-        $key = Config::get('auth.tokens.key', 'Auth');
         $age = $params['duration'];
 
-        $token->value = self::jwt($age)->encode($payload);
+        $token->value = self::encrypt( self::jwt($age)->encode($payload) );
         $token->createdAt = datenow();
 
         if (Config::get('auth.tokens.storeDB')) {
@@ -181,7 +188,7 @@ class UserToken extends ORM {
      * @return bool
      */
     public function isExpired() : bool {
-        $payload = self::jwt()->decode($this->value);
+        $payload = self::jwt()->decode( self::decrypt( $this->value ) );
 
         return $payload === false;
     }
@@ -192,7 +199,7 @@ class UserToken extends ORM {
      * @return object
      */
     public function getPayload() {
-        $payload = self::jwt()->decode($this->value);
+        $payload = self::jwt()->decode( self::decrypt( $this->value ) );
 
         return $payload === false ? [] : $payload;
     }
@@ -233,7 +240,7 @@ class UserToken extends ORM {
                 return;
             }
 
-            $content = self::jwt()->decode($tk->value);
+            $content = self::jwt()->decode( self::decrypt( $tk->value ) );
 
             if (!isset($content->userId)) {
                 $reject('token missing user ID');

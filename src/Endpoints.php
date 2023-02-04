@@ -25,13 +25,15 @@ if ($_endpoint_login != null) {
         Auth::login($username, $req->password)
         ->then(function($tokens) {
             response_die('ok', [
-                'token' => $tokens->sessionToken,
+                'token' => $tokens->token,
                 'refreshToken' => $tokens->refreshToken,
                 'user' => $tokens->user->ID
             ]);
         })
         ->catch(function($err) {
-            response_die('unauthorized');
+            response_die('unauthorized', [
+                'code' => 'credentials.invalid'
+            ]);
         });
 
     }]);
@@ -67,7 +69,7 @@ if ($_endpoint_signup != null) {
                 Auth::login($username, $data['password'])
                 ->then(function($tokens) {
                     response_die('ok', [
-                        'token' => $tokens->sessionToken,
+                        'token' => $tokens->token,
                         'refreshToken' => $tokens->refreshToken,
                         'user' => $tokens->user->ID
                     ]);
@@ -100,19 +102,23 @@ if ($_endpoint_validate != null) {
 
             $tk = $req->headers->Auth();
             if (!$tk) {
-                response_die('unauthorized');
+                response_die('unauthorized', [
+                    'code' => 'token.missing'
+                ]);
             }
 
             Auth::validate($tk)
             ->then(function($tokens) {
                 response_die('ok', [
-                    'token' => $tokens->sessionToken,
+                    'token' => $tokens->token,
                     'refreshToken' => $tokens->refreshToken,
                     'user' => $tokens->user->ID
                 ]);
             })
             ->catch(function() {
-                response_die('unauthorized');
+                response_die('unauthorized', [
+                    'token.invalid'
+                ]);
             });
 
         }
@@ -131,20 +137,22 @@ if ($_endpoint_refresh != null) {
             $tk = $req->headers->Auth();
             if (!$tk) {
                 response_die('bad', [
-                    'error' => 'missing authorization token'
+                    'error' => 'token.missing'
                 ]);
             }
     
             Auth::validate($tk, $req->refreshToken)
             ->then(function($tokens) {
                 response_die('ok', [
-                    'token' => $tokens->sessionToken,
+                    'token' => $tokens->token,
                     'refreshToken' => $tokens->refreshToken,
                     'user' => $tokens->user->ID
                 ]);
             })
-            ->catch(function() {
-                response_die('unauthorized');
+            ->catch(function($code) {
+                response_die('unauthorized', [
+                    'code' => $code
+                ]);
             });
     
         }

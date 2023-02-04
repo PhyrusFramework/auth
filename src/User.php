@@ -70,7 +70,7 @@ class AuthUser extends AdvancedORM {
      */
     public function getToken(string $type) : ?string {
 
-        $tk = UserToken::find('active = 1 AND user_id = :ID AND type = :type ORDER BY createdAt DESC', [
+        $tk = UserToken::findOne('active = 1 AND user_id = :ID AND type = :type ORDER BY createdAt DESC', [
             'ID' => $this->ID,
             'type' => $type
         ]);
@@ -86,7 +86,7 @@ class AuthUser extends AdvancedORM {
      */
     public function authTokens() : Generic {
         $session = $this->generateToken([
-            'type' => 'sessionToken',
+            'type' => 'token',
             'duration' => Config::get('auth.tokens.sessionDuration')
         ]);
 
@@ -94,19 +94,19 @@ class AuthUser extends AdvancedORM {
             'type' => 'refreshToken',
             'duration' => Config::get('auth.tokens.refreshDuration'),
             'payload' => [
-                'sessionToken' => $session
+                'token' => $session
             ]
         ]);
 
         return new Generic([
-            'sessionToken' => $session,
+            'token' => $session,
             'refreshToken' => $refresh,
             'user' => $this
         ]);
     }
 
     /**
-     * Refresh user's sessionToken
+     * Refresh user's token
      * 
      * @param string $refreshToken
      * @param ?string $expiredToken
@@ -136,9 +136,9 @@ class AuthUser extends AdvancedORM {
                     return;
                 }
 
-                if ($expiredToken != null && isset($payload->sessionToken)) {
-                    if ($expiredToken != $payload->sessionToken) {
-                        $reject('sessionToken mismatch');
+                if ($expiredToken != null && isset($payload->token)) {
+                    if ($expiredToken != $payload->token) {
+                        $reject('token mismatch');
                         return;
                     }
                 }
@@ -152,7 +152,7 @@ class AuthUser extends AdvancedORM {
                 $resolve($newTokens);
 
             })
-            ->catch(function($err) {
+            ->catch(function($err) use ($reject) {
                 $reject($err);
                 return;
             });

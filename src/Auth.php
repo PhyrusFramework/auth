@@ -146,34 +146,34 @@ class Auth {
     /**
      * Validate tokens to get logged user and refresh his tokens if necessary.
      * 
-     * @param ?string $sessionToken
+     * @param ?string $token
      * @param ?string $refreshToken
      * 
      * @return Generic
      */
-    public static function validate(?string $sessionToken, ?string $refreshToken = null) {
+    public static function validate(?string $token, ?string $refreshToken = null) {
 
-        return new Promise(function($resolve, $reject) use ($sessionToken, $refreshToken) {
+        return new Promise(function($resolve, $reject) use ($token, $refreshToken) {
 
-            if (empty($sessionToken)) {
-                $reject('token empty');
+            if (empty($token)) {
+                $reject('token.missing');
                 return;
             }
 
-            $tk = UserToken::instance($sessionToken, 'sessionToken');
+            $tk = UserToken::instance($token, 'sessionToken');
 
             if ($tk == null) {
-                $reject('token not found');
+                $reject('token.unknown');
                 return;
             }
 
             $tk->validate()
-            ->then(function() use ($tk, $sessionToken, $refreshToken, $resolve) {
+            ->then(function() use ($tk, $token, $refreshToken, $resolve) {
                 $user = $tk->getUser();
                 Auth::setUser($user);
 
                 $resolve(new Generic([
-                    'sessionToken' => $sessionToken,
+                    'token' => $token,
                     'refreshToken' => $refreshToken,
                     'user' => $user
                 ]));
@@ -192,7 +192,7 @@ class Auth {
                     $user = $rtk->getUser();
 
                     if ($user == null) {
-                        $reject('user not found');
+                        $reject('user.unknown');
                         return;
                     }
 
@@ -219,14 +219,14 @@ class Auth {
     }
 
     /**
-     * Set tokens as cookies 'sessionToken' and 'refreshToken'.
+     * Set tokens as cookies 'token' and 'refreshToken'.
      * 
      * @param string $token
      * @param string [Optional] $refreshToken
      */
     public static function setCookies(string $token, string $refreshToken = '') {
 
-        Cookie::set('sessionToken', $token, Config::get('auth.tokens.sessionDuration', 3600));
+        Cookie::set('token', $token, Config::get('auth.tokens.sessionDuration', 3600));
         if (!empty($refreshToken)) {
             Cookie::set('refreshToken', $refreshToken, Config::get('auth.tokens.refreshDuration'), 604800);
         }
@@ -239,11 +239,11 @@ class Auth {
      * @return Generic
      */
     public static function getCookies() {
-        $token = Cookie::get('sessionToken');
+        $token = Cookie::get('token');
         $refresh = Cookie::get('refreshToken');
 
         return new Generic([
-            'sessionToken' => $token,
+            'token' => $token,
             'refreshToken' => $refresh
         ]);
     }
@@ -252,7 +252,7 @@ class Auth {
      * Delete Auth token cookies.
      */
     public static function deleteCookies() {
-        Cookie::destroy('sessionToken');
+        Cookie::destroy('token');
         Cookie::destroy('refreshToken');
     }
 
