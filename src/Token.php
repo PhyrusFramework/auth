@@ -122,18 +122,18 @@ class UserToken extends ORM {
         $age = $params['duration'];
 
         $token->value = self::encrypt( self::jwt($age)->encode($payload) );
-        $token->createdAt = datenow();
+        $token->created_at = datenow();
 
         if (Config::get('auth.tokens.storeDB')) {
 
             // Check if there is a token to replace
-            $inactive = self::findOne('user_id = :ID AND type = :type AND active = 0 ORDER BY createdAt ASC', [
+            $inactive = self::findOne('user_id = :ID AND type = :type AND active = 0 ORDER BY created_at ASC', [
                 'ID' => $user->ID,
                 'type' => $params['type']
             ]);
             if ($inactive != null) {
                 $inactive->value = $token->value;
-                $inactive->createdAt = datenow();
+                $inactive->created_at = datenow();
                 $inactive->active = 1;
                 $token = $inactive;
             }
@@ -141,7 +141,7 @@ class UserToken extends ORM {
 
             $token->save();
 
-            $tokens = self::find('active = 1 AND user_id = :ID AND type = :type ORDER BY createdAt ASC', [
+            $tokens = self::find('active = 1 AND user_id = :ID AND type = :type ORDER BY created_at ASC', [
                 'ID' => $user->ID,
                 'type' => $params['type']
             ]);

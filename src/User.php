@@ -70,7 +70,7 @@ class AuthUser extends AdvancedORM {
      */
     public function getToken(string $type) : ?string {
 
-        $tk = UserToken::findOne('active = 1 AND user_id = :ID AND type = :type ORDER BY createdAt DESC', [
+        $tk = UserToken::findOne('active = 1 AND user_id = :ID AND type = :type ORDER BY created_at DESC', [
             'ID' => $this->ID,
             'type' => $type
         ]);

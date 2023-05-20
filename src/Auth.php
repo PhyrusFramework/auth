@@ -134,7 +134,7 @@ class Auth {
             if ($useUsername) {
                 $user->username = $data['username'];
             }
-            $user->createdAt = datenow();
+            $user->created_at = datenow();
     
             $user->save();
             $resolve($user);
